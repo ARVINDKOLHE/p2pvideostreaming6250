@@ -27,6 +27,13 @@ public class ServerPeerPing implements Serializable {
 		neighbours = new Hashtable <String, PeerWorkerThread>();
 	} // end default constructor
 	
+	public ServerPeerPing(PeerInformation peer) {
+		neighbours = new Hashtable <String, PeerWorkerThread>();
+		for (String ip : peer.neighbour) {
+			neighbours.put(ip, null);
+		}
+	}
+	
 	// The message is made up of:
 	// Unique Identifier
 	// Message Type Field

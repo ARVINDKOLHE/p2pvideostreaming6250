@@ -16,6 +16,7 @@ import java.util.TimerTask;
 import java.io.*;
 
 public class P2PServer {
+	//P2PServer contains peer information 
 	private static final int PORT = 13136;
 	private final long HEARTBEAT_DURATION = 3000;
 	private Hashtable <String, PeerInformation> peerSet = new Hashtable <String, PeerInformation> ();
@@ -26,20 +27,23 @@ public class P2PServer {
 		this.loggerThread = new LoggerThread();
 	}
 
+	//Handler is a new thread to handle every in come socket connection
 	private class Handler extends Thread {
 		private Socket socket;
 
 		public Handler(Socket socket) {
 			this.socket = socket;
 		}
-		
+	//Every connection accepted, Handler will 
+	//1st read the in coming information to see whether a new peer
+	//2nd if a new peer the help it to generate neighbour
 		public void run() {
 			Thread.currentThread().setName("Handler");
 			try {
 				ObjectInputStream inStream = new ObjectInputStream(socket.getInputStream());
 				PeerServerPing ping = (PeerServerPing) inStream.readObject();
 				String ip = ping.getIP();
-				int port = socket.getPort();
+				int port = 9898;
 				loggerThread.writeLog("["+Thread.currentThread().getName()+"]"+"New socket connection from "+ip+",\t"+port);
 				synchronized(peerSet) {
 					if (!peerSet.containsKey(ip)) {
@@ -63,7 +67,7 @@ public class P2PServer {
 		}
 
 	}
-	
+	//Heartbeat is to send peers connection information
 	private final class Heartbeat extends TimerTask{
 		private final int PORT = 9898;
 		public void run()
@@ -71,13 +75,14 @@ public class P2PServer {
 			Thread.currentThread().setName("ServerHeartBeat");
 			try{
 				synchronized (peerSet) {
-					loggerThread.writeLog("["+Thread.currentThread().getName()+"]"+"Start sending heartbeat for" + peerSet.size());
+					loggerThread.writeLog("["+Thread.currentThread().getName()+"]"+"Start sending heartbeat for " + peerSet.size());
+	//Enumerate every peer information. 
 					for (PeerInformation peer: peerSet.values()) {
 						loggerThread.writeLog("["+Thread.currentThread().getName()+"]"+"Start sending heartbeat to" + peer.ipAddr + " , " + this.PORT);
 
 						Socket socket = new Socket(peer.ipAddr, this.PORT);
 						ObjectOutputStream oStream = new ObjectOutputStream(socket.getOutputStream());
-						oStream.writeObject(new ServerPeerPing());
+						oStream.writeObject(new ServerPeerPing(peer));
 						//oStream.writeObject(peer);
 						oStream.close();
 						socket.close();
@@ -90,26 +95,7 @@ public class P2PServer {
 		}
 	}
 	
-	private final class PeerInformation implements Serializable {
-		public String ipAddr;
-		public int port;
-		public HashSet <String> neighbour = new HashSet <String> ();
-		
-		public PeerInformation(String ipAddr, int port) {
-			this.ipAddr = ipAddr;
-			this.port = port;
-		}
-		
-		public void addPeer(String ip) throws Exception{
-			if (neighbour.contains(ip)) throw new Exception("Duplicated Peer");
-			else neighbour.add(ip);
-		}
-		
-		public void removePeer(String ip) throws Exception{
-			if (neighbour.contains(ip)) neighbour.remove(ip);
-			else throw new Exception("Peer not exist");
-		}
-	}
+
 
 	public static void main(String[] args) throws IOException {
 		P2PServer p2pServer = new P2PServer();
