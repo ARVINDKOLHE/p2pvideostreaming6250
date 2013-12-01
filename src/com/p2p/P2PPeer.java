@@ -1,7 +1,7 @@
 /* ---------------------------------------------
 
 P2PPeer Node Class
-Last updated: Friday, 29th Nov 2013
+Last updated: Saturday, 30th Nov 2013
 
 Main class for process
 
@@ -19,7 +19,8 @@ public class P2PPeer {
 	private LoggerThread logThread;
 	private ServerCommThread serverCommThread;
 	private PeerCommThread peerCommThread;
-	private boolean isActive = true;
+	private String hostname;
+	private boolean isActive;
 	
 	private Hashtable <String, PeerWorkerThread> neighbourWorkers;
 	private Hashtable <String, VideoInfo> myVideos;
@@ -30,23 +31,28 @@ public class P2PPeer {
 		neighbourWorkers = new Hashtable <String, PeerWorkerThread>();
 		myVideos = new Hashtable <String, VideoInfo>();
 		
+		isActive = true;
+		
 	} // end default constructor
 	
-	private void displayAppHeader(String ip) {
+	private void displayAppHeader() {
 		
 		StringBuffer sb = new StringBuffer();
 		
 		sb.append("----------------------------------------------------------------\n");
-		sb.append("P2P VIDEO STREAMING NODE (").append("IP: ").append(ip).append(")\n");
+		sb.append("P2P VIDEO STREAMING NODE (").append("IP: ").append(hostname).append(")\n");
 		sb.append("----------------------------------------------------------------\n");
+		
+		//if (!logThread.getLogFileName().equals(""))
+			//sb.append("LOGFILE: ").append(logThread.getLogFileName()).append("\n");
 		
 		System.out.println(sb.toString());
 		
 	} // end displayAppHeader
 	
-	private void displayMenu(String ip) {
+	private void displayMenu() {
 		
-		this.displayAppHeader(ip);
+		this.displayAppHeader();
 		
 		StringBuffer sb = new StringBuffer();
 		
@@ -58,7 +64,12 @@ public class P2PPeer {
 		
 		System.out.println(sb.toString());
 		
-	} // end displayAppHeader
+	} // end displayMenu
+	
+	// returns the IP address of this peer node
+	public String getMyIP() {
+		return this.hostname;
+	} // end getMyIP
 
 	public void listNeighbours() {
 		
@@ -159,7 +170,7 @@ public class P2PPeer {
 				
 				sb.append("ENTRY ").append(++count).append("\n");
 				
-				String videoName= videoKeys.nextElement();
+				String videoName = videoKeys.nextElement();
 				
 				// Append name of video
 				sb.append(videoName).append(" - ");
@@ -186,16 +197,72 @@ public class P2PPeer {
 		return this.myVideos;
 	} // end getMyVideos
 	
+	private void listNeighbourVideos() {
+
+		int ipCount = 0;
+		int videoCount = 0;
+		
+		StringBuffer sb = new StringBuffer();
+		
+		if (this.neighbourWorkers != null) {
+
+			Enumeration <String> ipKeys = this.neighbourWorkers.keys();
+			
+			// Iterate through this peer's neighbour list
+			while (ipKeys.hasMoreElements()) {
+				
+				String ip = ipKeys.nextElement();
+				
+				PeerWorkerThread wThread = this.neighbourWorkers.get(ip);
+				
+				// Get video list of neighbour
+				Hashtable <String, VideoInfo> nVideoList = wThread.getVideoList();
+				
+				sb.append("ENTRY ").append(++ipCount).append("\n");
+				sb.append(ip).append("\n");
+
+				Enumeration <String> videoKeys = nVideoList.keys();
+				
+				while (videoKeys.hasMoreElements()) {
+					
+					String videoName = videoKeys.nextElement();
+					
+					// Append name of video
+					sb.append(++videoCount).append(" ").append(videoName).append(" - ");
+					
+					// Append number of blocks completed and total blocks
+					VideoInfo vInfo = this.myVideos.get(videoName);
+					
+					sb.append(vInfo.countComplete()).append("/");
+					sb.append(vInfo.getNumBlocks()).append("\n");
+					
+				} // endwhile
+				
+				if (videoCount == 0)
+					sb.append("I have no videos!\n");
+				
+				// Reset video counter for next iteration
+				videoCount = 0;
+				
+			} // endwhile
+		
+		} // endwhile
+		
+		if (ipCount == 0)
+			sb.append("I have no neighbours!\n");
+		
+		System.out.println(sb.toString());
+		
+	} // end listNeighbourVideos
+	
 	public static void main(String[] args) {
 
-		P2PPeer p2ppeer = new P2PPeer();
-		
-		String hostName = null;
+		P2PPeer p2ppeer = new P2PPeer();		
 		int serverPort = 0;
 		
 		// Get the peer's IP address
 		try {
-			hostName = InetAddress.getLocalHost().getHostAddress();
+			p2ppeer.hostname = InetAddress.getLocalHost().getHostAddress();
 		}
 		catch (Exception e) {}
 
@@ -204,7 +271,7 @@ public class P2PPeer {
 		
 		while (p2ppeer.isActive) {
 
-			p2ppeer.displayAppHeader(hostName);
+			p2ppeer.displayAppHeader();
 			
 			// Create new Scanner object to read in input
 			Scanner s = new Scanner(System.in);
@@ -241,7 +308,7 @@ public class P2PPeer {
 			// Loop display of menu until exit
 			while (p2ppeer.isActive) {
 				
-				p2ppeer.displayMenu(hostName);
+				p2ppeer.displayMenu();
 				
 				int choice = 0;
 
@@ -275,6 +342,7 @@ public class P2PPeer {
 							
 						case 4: // Show video list of neighbours
 							
+							p2ppeer.listNeighbourVideos();
 							break;
 							
 						case 5:

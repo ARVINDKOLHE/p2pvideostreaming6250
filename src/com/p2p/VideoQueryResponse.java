@@ -47,7 +47,6 @@ public class VideoQueryResponse implements Serializable {
 
 	// Constructor 2: Response with actual file chunk being sent back
 	// The constructor should take in the fields from the received VideoQuery message
-	
 	public VideoQueryResponse(String ip, String name, int block, ArrayList <String> path, byte[] b) {
 		
 		srcIP = ip;
@@ -91,7 +90,7 @@ public class VideoQueryResponse implements Serializable {
 	// Decrement peer index by 1
 	public void decrementPeerIndex() {
 		
-		if (this.currPeerIndex > 0)
+		if (this.currPeerIndex >= 0)
 			this.currPeerIndex -= 1;
 		
 	} // end incPeerIndex

@@ -37,4 +37,9 @@ public final class GlobalVar {
 	// Listening Port on Server for Peer to Peer Heartbeat
 	public final static int P2P_TCP_PORT = 9900;
 	
+	// Top level directory for videos
+	public final static String VIDEO_TOP_DIR = "Videos/";
+	// File extension for videos
+	public final static String VIDEO_SUFFIX = ".ts";
+	
 } // end class GlobalVar

@@ -27,7 +27,7 @@ public class LoggerThread extends Thread {
 		isActive = true;
 	} // end default constructor
 	
-	private String getLogFileName() {
+	private String makeLogFileName() {
 		
 		StringBuffer sb = new StringBuffer();
 		DateFormat dateFormat = new SimpleDateFormat("yyyyMMddHHmmss");
@@ -37,6 +37,10 @@ public class LoggerThread extends Thread {
 		return sb.toString();
 		
 	} // end createLogName
+	
+	public String getLogFileName() {
+		return logFile.getName();
+	} // end getLogFileName
 	
 	public void stopActivity() {
 
@@ -87,8 +91,7 @@ public class LoggerThread extends Thread {
 	
 	public void run() {
 		
-		logFile = new File(this.getLogFileName());		
-		System.out.println(logFile.getName());
+		logFile = new File(this.makeLogFileName());
 		
 		// Create this logfile if not existing
 		try {

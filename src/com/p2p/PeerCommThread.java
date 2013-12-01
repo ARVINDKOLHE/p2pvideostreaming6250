@@ -20,6 +20,10 @@ import java.net.DatagramSocket;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.Hashtable;
 
@@ -54,7 +58,10 @@ public class PeerCommThread extends Thread{
 		private boolean isActive;
 		
 		private PeerCommTCPThread(P2PPeer p2ppeer, LoggerThread loggerThread) {
+			
 			logThread = loggerThread;
+			this.isActive = true;
+			
 		} // end specific constructor
 
 		public void stopActivity() {
@@ -98,7 +105,7 @@ public class PeerCommThread extends Thread{
 					String ip = ipKeys.nextElement();
 					PeerWorkerThread wThread = p2ppeer.getNeighbourWorkers().get(ip);
 					
-					//wThread.sendVideoQuery(vidQuery);
+					wThread.sendVideoQuery(vidQuery);
 					
 				} // endwhile
 			
@@ -110,15 +117,18 @@ public class PeerCommThread extends Thread{
 		public void sendVideoQueryResponse(VideoQueryResponse vQueryRes) {
 		
 			if (p2ppeer.getNeighbourWorkers() != null) {
+
+				// Decrement index to point to IP of next hop on reverse path
+				vQueryRes.decrementPeerIndex();
 				
 				PeerWorkerThread wThread = p2ppeer.getNeighbourWorkers().get(vQueryRes.getCurrPeer());
 				
 				if (wThread == null)
-					logThread.writeLog("[" + this.getClass().getName() + "] ERROR: " + vQueryRes.getCurrPeer() + " is not a neighbour.");
+					logThread.writeLog("[" + this.getClass().getName() + "] ERROR: " + vQueryRes.getCurrPeer() + "[" + vQueryRes.getPeerIndex() + "]" + " is not a neighbour.");
 					
 				else {
 
-					logThread.writeLog("[" + this.getClass().getName() + "] Preparing query response to " + vQueryRes.getCurrPeer());
+					logThread.writeLog("[" + this.getClass().getName() + "] Preparing query response to " + vQueryRes.getCurrPeer() + "[" + vQueryRes.getPeerIndex() + "]");
 					wThread.sendVideoQueryResponse(vQueryRes);
 	
 				} // endif
@@ -195,16 +205,30 @@ public class PeerCommThread extends Thread{
 								// Obtain local IP address
 								String myIP = dataSocket.getInetAddress().getHostAddress();
 
+								// Ensure that this IP has not been already traversed in path
 								if (!vidQuery.isVisitedIP(myIP)) {
 
 									logThread.writeLog("[" + this.getClass().getName() + "] VideoQuery received.");
 									
 									if (vidQuery.isGetQuery()) {
 										
-										// Get Worker to send message with video contents if this is a GET message 
-										if (p2ppeer.getMyVideos().containsKey(vidQuery.getVideoName())) {
+										// Get Worker to send message with video contents if this is a GET message
+										// This is done provided that we have the file and the relevant block
+										if ((p2ppeer.getMyVideos().containsKey(vidQuery.getVideoName())) &&
+												(p2ppeer.getMyVideos().get(vidQuery.getVideoName()).hasCompleteBlock(vidQuery.getReqBlock()))) {
 											
-											// TODO!!!!
+											logThread.writeLog("[" + this.getClass().getName() + "] Verified node has " + vidQuery.getVideoName() + ", Block " + vidQuery.getReqBlock());
+											
+											// Read the file representing the block into a byte array
+											Path path = Paths.get(GlobalVar.VIDEO_TOP_DIR + vidQuery.getVideoName() + "/" + vidQuery.getVideoName() + GlobalVar.VIDEO_SUFFIX);
+											byte[] data = Files.readAllBytes(path);
+
+											// Format new video query response message with the video block to be propagated back to source
+											VideoQueryResponse vQueryRes = new VideoQueryResponse(vidQuery.getSrcIP(),
+													vidQuery.getVideoName(), vidQuery.getReqBlock(), vidQuery.getIPPath(), data);
+											
+											// Send video query response
+											this.sendVideoQueryResponse(vQueryRes);											
 											
 										} // endif
 										
@@ -215,6 +239,8 @@ public class PeerCommThread extends Thread{
 
 										// Add your own IP to path list
 										vidQuery.insertIP(myIP);
+
+										logThread.writeLog("[" + this.getClass().getName() + "] Inserted " + myIP + "into path list.");
 										
 										if (p2ppeer.getMyVideos().containsKey(vidQuery.getVideoName())) {
 											
@@ -222,6 +248,8 @@ public class PeerCommThread extends Thread{
 											VideoQueryResponse vQueryRes = new VideoQueryResponse(vidQuery.getSrcIP(),
 													vidQuery.getVideoName(), vidQuery.getReqBlock(), vidQuery.getIPPath());
 											
+											// Send video query response
+											this.sendVideoQueryResponse(vQueryRes);
 											
 										}
 										
@@ -241,27 +269,16 @@ public class PeerCommThread extends Thread{
 									
 								}
 								
+								// IP already traversed; log as duplicate
 								else
 									logThread.writeLog("[" + this.getClass().getName() + "] Duplicate VideoQuery dropped.");
-								
-								// process packet only if current node has not been already traversed in its path
-
-								// Obtain pointer to worker thread for this neighbour
-								//PeerWorkerThread worker = this.p2ppeer.getNeighbourWorkers().get(msg.getSrcIP());
-								
-								// Let worker handle Peer to Peer heartbeat packet
-								//if (worker != null)
-									//worker.processMsg(msg);
-								
+																
 							}
 							
 							// Ignore message if it does not belong to any required class
 							else {} // endif
 							
-						} // endif
-
-						
-						
+						} // endif	
 					
 					}
 					
@@ -301,7 +318,7 @@ public class PeerCommThread extends Thread{
 	// Invoked by main thread; tells controller to get workers to check neighbours for video
 	public void searchVideo(String videoName, int block) {
 
-		this.logThread.writeLog("[" + this.getClass().getName() + "] Searching for video: " + videoName);
+		this.logThread.writeLog("[" + this.getClass().getName() + "] Searching for block " + block + " of video: " + videoName);
 		
 		Hashtable <String, PeerWorkerThread> workers = this.p2ppeer.getNeighbourWorkers();
 		
@@ -313,18 +330,32 @@ public class PeerCommThread extends Thread{
 			String ip = workerKeys.nextElement();
 			PeerWorkerThread wThread = workers.get(ip);
 			
-			// Check if worker has file and block
-			if (wThread != null) {
-				
-				Hashtable <String, VideoInfo> videoList = wThread.getVideoList();
-				
-				//if ((videoList.get(videoName) != ) 
-				
-			} // endif
+			// Get video list from neighbour
+			Hashtable <String, VideoInfo> videoList = wThread.getVideoList();
 			
+			if (videoList != null) {
+
+				// If neighbour has the video and block, we issue a GET query request straightaway
+				if ((videoList.containsKey(videoName)) &&
+						(videoList.get(videoName).hasCompleteBlock(block))) {
+
+					this.logThread.writeLog("[" + this.getClass().getName() + "] " + ip + " has block " + block + " of video: " + videoName);
+					
+					// Issue a GET Video Query to retrieve block from neighbour
+					wThread.sendVideoQuery(new VideoQuery(p2ppeer.getMyIP(), ip, videoName, block, new ArrayList <String>()));
+				
+				}
+				
+				else {
+
+					this.logThread.writeLog("[" + this.getClass().getName() + "] Querying " + ip + " for block " + block + " of video: " + videoName);
+					
+					// Issue a standard Video Query to neighbour
+					wThread.sendVideoQuery(new VideoQuery(p2ppeer.getMyIP(), videoName, block));					
+					
+				} // endif
 			
-			// Dispatch peer worker threads to search for video
-			//wThread.sendVideoQuery(videoName, block);
+			} // endif			
 			
 		} // endwhile
 		
@@ -346,6 +377,9 @@ public class PeerCommThread extends Thread{
 	} // end stopActivity
 	
 	public void run() {
+
+		// Start thread to listen on TCP port
+		this.pTCPThread.start();
 		
 		// Attempt to create new datagram socket to listen on
 		while (this.isActive) {	
@@ -383,9 +417,6 @@ public class PeerCommThread extends Thread{
 			catch (Exception e) {}
 			
 		} // endwhile
-		
-		// Start thread to listen on TCP port
-		this.pTCPThread.start();
 				
 		// Listen for incoming datagrams
 		while (this.isActive) {

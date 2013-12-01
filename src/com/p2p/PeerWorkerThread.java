@@ -120,36 +120,50 @@ public class PeerWorkerThread extends Thread {
 		return this.videoList;
 	} // end getVideoList
 	
-	// Send video query message to neighbours to either:
-	// 1. Get the video
-	// 2. Forward query to other neighbours to ask for peer that can service request
-	public void sendVideoQuery(String videoName) {
-		
-		/*
-		// Check if this neighbour has the required block for the file first
-		VideoInfo vInfo = this.videoList.get(videoName);
-		
-		// If neighbour has the file, check if it has the block
-		if (vInfo == null) {
+	// Send VideoQuery message
+	public void sendVideoQuery(VideoQuery vidQuery) {
+
+		try {
+			
+			// Attempt to establish TCP connection with this next hop node
+			Socket serverSocket = new Socket(this.nodeIP, GlobalVar.P2P_TCP_PORT);
+			
+			// Write the video query response message as serialised object to socket connection
+			ObjectOutputStream oStream = new ObjectOutputStream(serverSocket.getOutputStream()); 
+			oStream.writeObject(vidQuery);
+			oStream.close();
+			
+			// Close connection once video query response has been sent
+			serverSocket.close();
+			
+			// Write SUCCESS status to log file
+			this.logThread.writeLog("[" + this.getClass().getName() + "] Video Query sent to: " + this.nodeIP + ":" + GlobalVar.P2P_TCP_PORT);
+			
 		}
 		
-		// otherwise forward the query to this neighbour
-		else {
+		catch (IOException ioe) {
+
+			// Write FAIL status to log file
+			this.logThread.writeLog("[" + this.getClass().getName() + "] ERROR: Could not forward Video Query to " + this.nodeIP + ":" + GlobalVar.P2P_TCP_PORT);
+		
+		} // end try-catch
+
+		catch (Exception e) {
+
+			// Write general exception type to log
+			this.logThread.writeLog("[" + this.getClass().getName() + "] EXCEPTION:" + e.getClass().getName());
 			
-		} // endif
-		*/
+		} // end try-catch
 		
 	} // end sendVideoQuery
 	
+	// Send VideoQueryResponse message
 	public void sendVideoQueryResponse(VideoQueryResponse vQueryResponse) {
 		
 		try {
 			
-			// Decrement index to point to IP of next hop on reverse path
-			vQueryResponse.decrementPeerIndex();
-			
 			// Attempt to establish TCP connection with this next hop node
-			Socket serverSocket = new Socket(vQueryResponse.getCurrPeer(), GlobalVar.P2P_TCP_PORT);
+			Socket serverSocket = new Socket(this.nodeIP, GlobalVar.P2P_TCP_PORT);
 			
 			// Write the video query response message as serialised object to socket connection
 			ObjectOutputStream oStream = new ObjectOutputStream(serverSocket.getOutputStream()); 
@@ -160,14 +174,14 @@ public class PeerWorkerThread extends Thread {
 			serverSocket.close();
 			
 			// Write SUCCESS status to log file
-			this.logThread.writeLog("[" + this.getClass().getName() + "] Video Query Response forwarded to: " + vQueryResponse.getCurrPeer() + ":" + GlobalVar.P2P_TCP_PORT);
+			this.logThread.writeLog("[" + this.getClass().getName() + "] Video Query Response forwarded to: " + this.nodeIP + ":" + GlobalVar.P2P_TCP_PORT);
 			
 		}
 		
 		catch (IOException ioe) {
 
 			// Write FAIL status to log file
-			this.logThread.writeLog("[" + this.getClass().getName() + "] ERROR: Could not forward Video Query Response to " + vQueryResponse.getCurrPeer() + ":" + GlobalVar.P2P_TCP_PORT);
+			this.logThread.writeLog("[" + this.getClass().getName() + "] ERROR: Could not forward Video Query Response to " + this.nodeIP + ":" + GlobalVar.P2P_TCP_PORT);
 		
 		} // end try-catch
 
@@ -180,16 +194,11 @@ public class PeerWorkerThread extends Thread {
 		
 	} // end sendVideoQueryResponse
 	
-	// Overloaded function to service InterPeerPings
 	// Overwrite current video list for that neighbour with the new copy
 	public void processMsg(InterPeerPing ippMsg) {
 		this.videoList = ippMsg.getSrcVideoList();
 	} // end processMsg (InterPeerPing)
-	
-	public void processMsg(VideoQuery vidQuery) {
-		
-	} // end processMsg (VideoQuery)
-	
+
 	public void run() {
 		
 		// Execute a new timer and timer task
