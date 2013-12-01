@@ -63,7 +63,9 @@ public class LoggerThread extends Thread {
 				
 				sb.append("[");
 				sb.append(dateFormat.format(new Date()).toString()).append("]");
-				sb.append(" - ").append(s).append("\n" + "");
+				sb.append(" - ");
+				sb.append("["+Thread.currentThread().getName()+"]");
+				sb.append(s).append("\n" + "");
 				
 				fos.write(sb.toString().getBytes());
 				
