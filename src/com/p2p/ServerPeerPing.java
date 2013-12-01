@@ -30,7 +30,7 @@ public class ServerPeerPing implements Serializable {
 	public ServerPeerPing(PeerInformation peer) {
 		neighbours = new Hashtable <String, PeerWorkerThread>();
 		for (String ip : peer.neighbour) {
-			neighbours.put(ip, null);
+			neighbours.put(ip, new PeerWorkerThread());
 		}
 	}
 	
@@ -50,7 +50,7 @@ public class ServerPeerPing implements Serializable {
 	// Adds a neighbour to the hashtable, by IP.
 	// PeerWorkerThread value is null at addition; to be filled later
 	public void addNeighbour(String ip) {
-		neighbours.put(ip, null);
+		neighbours.put(ip, new PeerWorkerThread());
 	} // end addNeighbour
 	
 	public Hashtable <String, PeerWorkerThread> getNeighbours() {
