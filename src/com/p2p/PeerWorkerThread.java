@@ -1,7 +1,7 @@
 /* ---------------------------------------------
 
-PeerCommThread Class
-Last updated: Thursday, 28th Nov 2013
+PeerWorkerThread Class
+Last updated: Saturday, 30th Nov 2013
 
 Worker thread that handles all peer to peer
 connections between source peer and targeted peer
@@ -19,6 +19,7 @@ import java.io.ObjectOutputStream;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.net.Socket;
 import java.util.Hashtable;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -30,6 +31,9 @@ public class PeerWorkerThread extends Thread {
 	private boolean isActive;
 	
 	private Hashtable <String, VideoInfo> videoList;
+	
+	// default constructor; used only as placeholder
+	public PeerWorkerThread() {}
 	
 	public PeerWorkerThread(String ip, LoggerThread logThread) {
 
@@ -76,7 +80,7 @@ public class PeerWorkerThread extends Thread {
 				// Send heartbeat to peer
 				dsocket.send(msg);
 
-				this.logThread.writeLog("Successfully sent heartbeat to neighbour at " + this.neighbourIP);
+				this.logThread.writeLog("[" + this.getClass().getName() + "] Successfully sent heartbeat to neighbour at " + this.neighbourIP);
 				
 				// Close connection upon completion
 				dsocket.close();
@@ -86,14 +90,14 @@ public class PeerWorkerThread extends Thread {
 			catch (IOException ioe) {
 
 				// Write FAIL status to log file
-				this.logThread.writeLog("ERROR: Could not send heartbeat to neighbour at " + this.neighbourIP);
+				this.logThread.writeLog("[" + this.getClass().getName() + "] ERROR: Could not send heartbeat to neighbour at " + this.neighbourIP);
 			
 			} 
 			
 			catch (Exception e) {
 
 				// Write general exception type to log
-				this.logThread.writeLog(this.getClass().getName() + ": " + e.toString());
+				this.logThread.writeLog("[" + this.getClass().getName() + "] EXCEPTION:" + e.getClass().getName());
 				
 			} // end try-catch
 						
@@ -103,13 +107,88 @@ public class PeerWorkerThread extends Thread {
 	
 	// Signal thread to stop activity and perform cleanup
 	public void stopActivity() {
+		
 		this.isActive = false;
+		
+		// Interrupt thread to initiate shutdown of thread
+		this.interrupt();
+		
 	} // end stopActivity
 	
+	// retrieves video list for this node
+	public Hashtable <String, VideoInfo> getVideoList() {
+		return this.videoList;
+	} // end getVideoList
+	
+	// Send video query message to neighbours to either:
+	// 1. Get the video
+	// 2. Forward query to other neighbours to ask for peer that can service request
+	public void sendVideoQuery(String videoName) {
+		
+		/*
+		// Check if this neighbour has the required block for the file first
+		VideoInfo vInfo = this.videoList.get(videoName);
+		
+		// If neighbour has the file, check if it has the block
+		if (vInfo == null) {
+		}
+		
+		// otherwise forward the query to this neighbour
+		else {
+			
+		} // endif
+		*/
+		
+	} // end sendVideoQuery
+	
+	public void sendVideoQueryResponse(VideoQueryResponse vQueryResponse) {
+		
+		try {
+			
+			// Decrement index to point to IP of next hop on reverse path
+			vQueryResponse.decrementPeerIndex();
+			
+			// Attempt to establish TCP connection with this next hop node
+			Socket serverSocket = new Socket(vQueryResponse.getCurrPeer(), GlobalVar.P2P_TCP_PORT);
+			
+			// Write the video query response message as serialised object to socket connection
+			ObjectOutputStream oStream = new ObjectOutputStream(serverSocket.getOutputStream()); 
+			oStream.writeObject(vQueryResponse);
+			oStream.close();
+			
+			// Close connection once video query response has been sent
+			serverSocket.close();
+			
+			// Write SUCCESS status to log file
+			this.logThread.writeLog("[" + this.getClass().getName() + "] Video Query Response forwarded to: " + vQueryResponse.getCurrPeer() + ":" + GlobalVar.P2P_TCP_PORT);
+			
+		}
+		
+		catch (IOException ioe) {
+
+			// Write FAIL status to log file
+			this.logThread.writeLog("[" + this.getClass().getName() + "] ERROR: Could not forward Video Query Response to " + vQueryResponse.getCurrPeer() + ":" + GlobalVar.P2P_TCP_PORT);
+		
+		} // end try-catch
+
+		catch (Exception e) {
+
+			// Write general exception type to log
+			this.logThread.writeLog("[" + this.getClass().getName() + "] EXCEPTION:" + e.getClass().getName());
+			
+		} // end try-catch		
+		
+	} // end sendVideoQueryResponse
+	
 	// Overloaded function to service InterPeerPings
+	// Overwrite current video list for that neighbour with the new copy
 	public void processMsg(InterPeerPing ippMsg) {
 		this.videoList = ippMsg.getSrcVideoList();
-	} // end processMsg
+	} // end processMsg (InterPeerPing)
+	
+	public void processMsg(VideoQuery vidQuery) {
+		
+	} // end processMsg (VideoQuery)
 	
 	public void run() {
 		
@@ -121,7 +200,7 @@ public class PeerWorkerThread extends Thread {
 		// Sending of poll to neighbours starts after initial interval of one heartbeat duration
 		timer.scheduleAtFixedRate(nPoll, GlobalVar.P2P_HEARTBEAT_DURATION, GlobalVar.P2P_HEARTBEAT_DURATION);
 
-		this.logThread.writeLog("Neighbour poll TimerTask activated: " + this.nodeIP);
+		this.logThread.writeLog("[" + this.getClass().getName() + "] Neighbour poll TimerTask activated: " + this.nodeIP);
 		
 		while (this.isActive) {
 			
@@ -136,7 +215,7 @@ public class PeerWorkerThread extends Thread {
 		// Stop peer to peer heartbeats when thread is to be stopped
 		timer.cancel();
 
-		this.logThread.writeLog("Neighbour poll TimerTask cancelled: " + this.nodeIP);
+		this.logThread.writeLog("[" + this.getClass().getName() + "] Neighbour poll TimerTask cancelled: " + this.nodeIP);
 		
 	} // end run
 	

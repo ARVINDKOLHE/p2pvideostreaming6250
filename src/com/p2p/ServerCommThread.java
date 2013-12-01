@@ -1,7 +1,7 @@
 /* ---------------------------------------------
 
 ServerCommThread Class
-Last updated: Monday, 18th Nov 2013
+Last updated: Friday, 29th Nov 2013
 
 Thread class which handles all communications
 between a Peer and the Server
@@ -26,6 +26,8 @@ public class ServerCommThread extends Thread {
 	
 	private String serverIPAddr;
 	private int serverPort;
+	ServerSocket peerSocket;
+	
 	private LoggerThread logThread;
 	private P2PPeer p2pPeer;
 	
@@ -40,16 +42,16 @@ public class ServerCommThread extends Thread {
 		private LoggerThread logThread;
 		
 		private Heartbeat(String ip, int port, LoggerThread thLog) {
+			
 			this.serverIP = ip;
 			this.serverPort = port;
 			this.logThread = thLog;
+		
 		} // end specific constructor
 		
 		public void run() {			
 			
 			try {
-
-				System.out.println(this.serverIP + " " + this.serverPort);
 				
 				// Attempt to establish TCP connection with P2P Server
 				Socket serverSocket = new Socket(this.serverIP, this.serverPort);
@@ -64,20 +66,21 @@ public class ServerCommThread extends Thread {
 				serverSocket.close();
 				
 				// Write SUCCESS status to log file
-				this.logThread.writeLog("Successfully sent heartbeat to server at " + this.serverIP + ":" + this.serverPort);
+				this.logThread.writeLog("[" + this.getClass().getName() + "] Heartbeat sent to server: " + this.serverIP + ":" + this.serverPort);
 				
 			}
+			
 			catch (IOException ioe) {
 
 				// Write FAIL status to log file
-				this.logThread.writeLog("ERROR: Could not send heartbeat to server.");
+				this.logThread.writeLog("[" + this.getClass().getName() + "] ERROR: Could not send heartbeat to server.");
 			
 			} // end try-catch
 
 			catch (Exception e) {
 
 				// Write general exception type to log
-				this.logThread.writeLog(this.getClass().getName() + ": " + e.toString());
+				this.logThread.writeLog("[" + this.getClass().getName() + "] EXCEPTION:" + e.getClass().getName());
 				
 			} // end try-catch
 			
@@ -89,6 +92,8 @@ public class ServerCommThread extends Thread {
 		
 		serverIPAddr = ip;
 		serverPort = port;
+		peerSocket = null;
+		
 		logThread = thLog;
 		p2pPeer = peer;
 		
@@ -97,12 +102,34 @@ public class ServerCommThread extends Thread {
 	} // end specific constructor
 	
 	public void stopActivity() {
+		
 		this.isActive = false;
+
+		if (peerSocket != null) {
+			
+			// Close socket upon completion
+			try {
+				
+				peerSocket.close();
+				logThread.writeLog("[" + this.getClass().getName() + "] Listening connection to P2P Server closed.");
+				
+			}
+			catch (IOException ioe) {
+				logThread.writeLog("[" + this.getClass().getName() + "] ERROR: Could not close listening connection to P2P Server.");
+			} // end try-catch
+			
+			catch (Exception e) {
+
+				// Write general exception type to log
+				this.logThread.writeLog("[" + this.getClass().getName() + "] EXCEPTION:" + e.getClass().getName());
+				
+			} // end try-catch
+				
+		} // endif
+		
 	} // end stopActivity
 	
 	public void run() {
-		
-		ServerSocket peerSocket = null;
 		
 		// Try to open up a listening port
 		while (this.isActive) {
@@ -110,20 +137,22 @@ public class ServerCommThread extends Thread {
 			try {
 				
 				peerSocket = new ServerSocket(this.PEER_LISTEN_PORT);
-				logThread.writeLog("Listening port established at " + this.PEER_LISTEN_PORT);
+				peerSocket.setReuseAddress(true);
+				
+				logThread.writeLog("[" + this.getClass().getName() + "] Listening port for Server established at " + this.PEER_LISTEN_PORT);
 				
 				// Break out of loop once listening port is ready
 				break;
 				
 			}
 			catch (IOException ioe) {
-				logThread.writeLog("ERROR: Cannot establish listening port");
+				logThread.writeLog("[" + this.getClass().getName() + "] ERROR: Cannot establish listening port");
 			}
 			
 			catch (Exception e) {
 
 				// Write general exception type to log
-				this.logThread.writeLog(this.getClass().getName() + ": " + e.toString());
+				this.logThread.writeLog("[" + this.getClass().getName() + "] EXCEPTION:" + e.getClass().getName());
 				
 			} // end try-catch
 			
@@ -142,8 +171,8 @@ public class ServerCommThread extends Thread {
 		
 		// Sending of heartbeat starts after initial interval of one heartbeat duration
 		timer.scheduleAtFixedRate(heartbeat, this.HEARTBEAT_DURATION, this.HEARTBEAT_DURATION);
-
-		System.out.println("Timer started!");
+		
+		this.logThread.writeLog("[" + this.getClass().getName() + "] Heartbeat timer started.");
 		
 		// Thread starts listening for heartbeats coming from server end
 		while (this.isActive) {
@@ -164,47 +193,39 @@ public class ServerCommThread extends Thread {
 					this.p2pPeer.updateNeighbours(inMsg.getNeighbours());
 				
 				}
-				catch (Exception e) {}
+				
+				catch (Exception e) {} // end try-catch
 				
 			}
+
+			
 			catch (IOException ioe) {
 
-				logThread.writeLog("ERROR: Cannot read input stream coming from server");
+				if (this.isActive)
+					this.logThread.writeLog("[" + this.getClass().getName() + "] IOException on input stream from server.");
+					
+				// Triggered by main P2PPeer class to close thread
+				else {
+					
+					this.logThread.writeLog("[" + this.getClass().getName() + "] ServerCommThread closing.");
+					break;
+					
+				} // endif
+				
 				
 			} // end try-catch
-			
+						
 			catch (Exception e) {
 
 				// Write general exception type to log
-				this.logThread.writeLog(this.getClass().getName() + ": " + e.toString());
+				this.logThread.writeLog("[" + this.getClass().getName() + "] EXCEPTION:" + e.getClass().getName());
 				
 			} // end try-catch
 
 		} // endwhile
 			
+		// Cancel timer when complete
 		timer.cancel();
-
-		if (peerSocket != null) {
-				
-			// Close socket upon completion
-			try {
-				
-				peerSocket.close();
-				logThread.writeLog("Listening connection to P2P Server closed.");
-				
-			}
-			catch (IOException ioe) {
-				System.out.println("ERROR: Cannot close Peer Socket.");				
-			} // end try-catch
-			
-			catch (Exception e) {
-
-				// Write general exception type to log
-				this.logThread.writeLog(this.getClass().getName() + ": " + e.toString());
-				
-			} // end try-catch
-				
-		} // endif
 
 	} // end run
 

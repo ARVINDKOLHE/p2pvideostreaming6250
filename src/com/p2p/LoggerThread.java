@@ -62,7 +62,6 @@ public class LoggerThread extends Thread {
 				sb.append(" - ").append(s).append("\n" + "");
 				
 				fos.write(sb.toString().getBytes());
-				System.out.println(sb.toString());
 				fos.close();
 				
 			}

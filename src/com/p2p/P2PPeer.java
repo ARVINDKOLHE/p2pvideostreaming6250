@@ -1,7 +1,7 @@
 /* ---------------------------------------------
 
 P2PPeer Node Class
-Last updated: Monday, 18th Nov 2013
+Last updated: Friday, 29th Nov 2013
 
 Main class for process
 
@@ -10,12 +10,9 @@ Main class for process
 package com.p2p;
 
 import java.net.InetAddress;
-import java.net.Socket;
 import java.util.Enumeration;
 import java.util.Hashtable;
 import java.util.Scanner;
-
-import java.io.*;
 
 public class P2PPeer {
 	
@@ -25,7 +22,16 @@ public class P2PPeer {
 	private boolean isActive = true;
 	
 	private Hashtable <String, PeerWorkerThread> neighbourWorkers;
+	private Hashtable <String, VideoInfo> myVideos;
 
+	private P2PPeer() {
+		
+		// Create empty hashtables for worker and video lists
+		neighbourWorkers = new Hashtable <String, PeerWorkerThread>();
+		myVideos = new Hashtable <String, VideoInfo>();
+		
+	} // end default constructor
+	
 	private void displayAppHeader(String ip) {
 		
 		StringBuffer sb = new StringBuffer();
@@ -38,7 +44,9 @@ public class P2PPeer {
 		
 	} // end displayAppHeader
 	
-	private void displayMenu() {
+	private void displayMenu(String ip) {
+		
+		this.displayAppHeader(ip);
 		
 		StringBuffer sb = new StringBuffer();
 		
@@ -51,6 +59,32 @@ public class P2PPeer {
 		System.out.println(sb.toString());
 		
 	} // end displayAppHeader
+
+	public void listNeighbours() {
+		
+		int count = 0;
+		StringBuffer sb = new StringBuffer();
+		
+		if (this.neighbourWorkers != null) {
+
+			Enumeration <String> ipKeys = this.neighbourWorkers.keys();
+			
+			// Iterate through this peer's neighbour list
+			while (ipKeys.hasMoreElements()) {
+				
+				sb.append("ENTRY ").append(++count).append("\n");
+				sb.append(ipKeys.nextElement()).append("\n");
+				
+			} // endwhile
+		
+		} // endwhile
+		
+		if (count == 0)
+			sb.append("I have no neighbours!\n");
+		
+		System.out.println(sb.toString());
+			
+	} // end listNeighbours
 	
 	// Given a hashtable of neighbour IPs:
 	// 1. Remove nodes which are no longer designated neighbours
@@ -80,7 +114,7 @@ public class P2PPeer {
 				neighbourWorkers.remove(ip);
 				
 				// Log down removal of neighbouring peer node
-				this.logThread.writeLog("Peer node " + ip + " removed as neighbour.");
+				this.logThread.writeLog("[" + this.getClass().getName() + "] Peer node " + ip + " removed as neighbour.");
 			
 			} // endif
 			
@@ -101,26 +135,67 @@ public class P2PPeer {
 			neighbourWorkers.put(ip, peerThread);
 			
 			// Log down assignment of new peer node
-			this.logThread.writeLog("Peer node " + ip + " added as neighbour.");
+			this.logThread.writeLog("[" + this.getClass().getName() + "] Peer node " + ip + " added as neighbour.");
 			
 		} // endwhile
 	
 	} // end updateNeighbours
 	
-	public Hashtable <String, PeerWorkerThread> getNeighbours() {
+	public Hashtable <String, PeerWorkerThread> getNeighbourWorkers() {
 		return this.neighbourWorkers;
 	} // end getNeighbours
+	
+	private void listVideos() {
+
+		int count = 0;
+		StringBuffer sb = new StringBuffer();
+		
+		if (this.myVideos != null) {
+
+			Enumeration <String> videoKeys = this.myVideos.keys();
+			
+			// Iterate through this peer's neighbour list
+			while (videoKeys.hasMoreElements()) {
+				
+				sb.append("ENTRY ").append(++count).append("\n");
+				
+				String videoName= videoKeys.nextElement();
+				
+				// Append name of video
+				sb.append(videoName).append(" - ");
+				
+				// Append number of blocks completed and total blocks
+				VideoInfo vInfo = this.myVideos.get(videoName);
+				
+				sb.append(vInfo.countComplete()).append("/");
+				sb.append(vInfo.getNumBlocks()).append("\n");
+				
+			} // endwhile
+		
+		} // endwhile
+		
+		if (count == 0)
+			sb.append("I have no videos!\n");
+		
+		System.out.println(sb.toString());
+		
+	} // end listVideos
+	
+	// Retrieve hashtable of videos
+	public Hashtable <String, VideoInfo> getMyVideos() {
+		return this.myVideos;
+	} // end getMyVideos
 	
 	public static void main(String[] args) {
 
 		P2PPeer p2ppeer = new P2PPeer();
 		
-		String serverIP = null;
+		String hostName = null;
 		int serverPort = 0;
 		
 		// Get the peer's IP address
 		try {
-			serverIP = InetAddress.getLocalHost().getHostAddress();
+			hostName = InetAddress.getLocalHost().getHostAddress();
 		}
 		catch (Exception e) {}
 
@@ -129,13 +204,13 @@ public class P2PPeer {
 		
 		while (p2ppeer.isActive) {
 
-			p2ppeer.displayAppHeader(serverIP);
+			p2ppeer.displayAppHeader(hostName);
 			
 			// Create new Scanner object to read in input
 			Scanner s = new Scanner(System.in);
 			
 			System.out.print("Enter IP address for P2P Server: ");
-			String hostName = s.next();
+			String serverIP = s.next();
 			
 			// Get port number
 			while (p2ppeer.isActive) {
@@ -156,7 +231,7 @@ public class P2PPeer {
 			} // endwhile
 			
 			// Launch Server communications thread
-			p2ppeer.serverCommThread = new ServerCommThread(hostName, serverPort, p2ppeer.logThread, p2ppeer);
+			p2ppeer.serverCommThread = new ServerCommThread(serverIP, serverPort, p2ppeer.logThread, p2ppeer);
 			p2ppeer.serverCommThread.start();
 			
 			// Launch Peer communications controller thread
@@ -166,7 +241,7 @@ public class P2PPeer {
 			// Loop display of menu until exit
 			while (p2ppeer.isActive) {
 				
-				p2ppeer.displayMenu();
+				p2ppeer.displayMenu(hostName);
 				
 				int choice = 0;
 
@@ -176,32 +251,52 @@ public class P2PPeer {
 					
 					switch (choice) {
 					
-						case 1:
+						case 1: // Video search
+							
+							System.out.print("Enter desired video file name (case sensitive): ");
+							String videoName = s.next();
+							
+							System.out.println("Starting search for video: " + videoName);
+							
+							// Start search for video
+							p2ppeer.peerCommThread.searchVideo(videoName, 0);
+							
 							break;
-						case 2:
+							
+						case 2: // Show neighbours
+							
+							p2ppeer.listNeighbours();
 							break;
-						case 3:
+							
+						case 3: // Show my videos
+							
+							p2ppeer.listVideos();
 							break;
-						case 4:
+							
+						case 4: // Show video list of neighbours
+							
 							break;
+							
 						case 5:
 							p2ppeer.isActive = false;
 							break;
 							
-						default: break;
+						default: 
+							
+							System.out.println("Invalid option! Please retry.");
+							continue;
 					
 					} // endswitch
-					
-					if ((serverPort >=0) && (serverPort <=65535))
-						break;
+
 				}
 				catch (Exception e) {
+					System.out.println(e.getClass().getName());
 					System.out.println("Invalid option. Please retry!");
 				} // end try-catch
 				
 			} // endwhile
 			
-			System.out.println("Exiting program...");
+			System.out.println("Performing cleanup...");
 
 			// Cleanup upon exit
 			s.close();
@@ -212,6 +307,8 @@ public class P2PPeer {
 			p2ppeer.logThread.stopActivity();
 			
 		}  // endwhile
+		
+		System.out.println("Goodbye!");
 		
 	} // end main
 	
