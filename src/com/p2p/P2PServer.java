@@ -40,9 +40,9 @@ public class P2PServer {
 		public void run() {
 			Thread.currentThread().setName("Handler");
 			try {
+				String ip = socket.getInetAddress().getHostAddress();
 				ObjectInputStream inStream = new ObjectInputStream(socket.getInputStream());
 				PeerServerPing ping = (PeerServerPing) inStream.readObject();
-				String ip = ping.getIP();
 				int port = 9898;
 				loggerThread.writeLog("["+Thread.currentThread().getName()+"]"+"New socket connection from "+ip+",\t"+port);
 				synchronized(peerSet) {
