@@ -1,7 +1,7 @@
 /* ---------------------------------------------
 
 PeerCommThread Class
-Last updated: Friday, 29th Nov 2013
+Last updated: Sunday, 1st Dec 2013
 
 Thread class which handles incoming packets for
 peers, deserialises them to the correct message
@@ -93,7 +93,7 @@ public class PeerCommThread extends Thread{
 		} // end stopActivity
 		
 		// forward video query to all neighbour workers 
-		public void forwardToNextHopVideoQuery(VideoQuery vidQuery) {
+		public void forwardToNeighboursVideoQuery(VideoQuery vidQuery) {
 			
 			if (p2ppeer.getNeighbourWorkers() != null) {
 
@@ -111,7 +111,31 @@ public class PeerCommThread extends Thread{
 			
 			} // endwhile
 			
-		} // end forwardToNextHopVideoQuery
+		} // end forwardToNeighboursVideoQuery
+		
+		// forward video query to targeted worker 
+		public void forwardToTargetVideoQuery(VideoQuery vidQuery) {
+			
+			if (p2ppeer.getNeighbourWorkers() != null) {
+
+				int pathIndex = vidQuery.getCurrIndex();
+				
+				if (p2ppeer.getNeighbourWorkers().contains(pathIndex)) {
+	
+					PeerWorkerThread wThread = p2ppeer.getNeighbourWorkers().get(vidQuery.getCurrIndex());
+					logThread.writeLog("[" + this.getClass().getName() + "] Forwarding video query to target: " + vidQuery.getIPPath().get(pathIndex));
+					
+				}
+				
+				else {
+
+					logThread.writeLog("[" + this.getClass().getName() + "] ERROR: Cannot forward video query to " + vidQuery.getIPPath().get(pathIndex));
+					
+				} // endif
+							
+			} // endwhile
+			
+		} // end forwardToNeighboursVideoQuery
 		
 		// Delegate sending of query response to targeted neighbour worker
 		public void sendVideoQueryResponse(VideoQueryResponse vQueryRes) {
@@ -212,23 +236,67 @@ public class PeerCommThread extends Thread{
 									
 									if (vidQuery.isGetQuery()) {
 										
+										// Not at destination node; Continue forwarding GET request to destination
+										if (vidQuery.getCurrIndex() < (vidQuery.getIPPath().size() - 1)) {
+											
+											// Increment index on path list to point to next hop to destination
+											vidQuery.incrementCurrIndex();
+											
+											// forward video query
+											this.forwardToTargetVideoQuery(vidQuery);	
+											
+										}
+										
+										// At destination
 										// Get Worker to send message with video contents if this is a GET message
 										// This is done provided that we have the file and the relevant block
-										if ((p2ppeer.getMyVideos().containsKey(vidQuery.getVideoName())) &&
-												(p2ppeer.getMyVideos().get(vidQuery.getVideoName()).hasCompleteBlock(vidQuery.getReqBlock()))) {
+										else {
 											
-											logThread.writeLog("[" + this.getClass().getName() + "] Verified node has " + vidQuery.getVideoName() + ", Block " + vidQuery.getReqBlock());
-											
-											// Read the file representing the block into a byte array
-											Path path = Paths.get(GlobalVar.VIDEO_TOP_DIR + vidQuery.getVideoName() + "/" + vidQuery.getVideoName() + GlobalVar.VIDEO_SUFFIX);
-											byte[] data = Files.readAllBytes(path);
+											if ((p2ppeer.getMyVideos().containsKey(vidQuery.getVideoName())) &&
+													(p2ppeer.getMyVideos().get(vidQuery.getVideoName()).hasCompleteBlock(vidQuery.getReqBlock()))) {
 
-											// Format new video query response message with the video block to be propagated back to source
-											VideoQueryResponse vQueryRes = new VideoQueryResponse(vidQuery.getSrcIP(),
-													vidQuery.getVideoName(), vidQuery.getReqBlock(), vidQuery.getIPPath(), data);
-											
-											// Send video query response
-											this.sendVideoQueryResponse(vQueryRes);											
+												logThread.writeLog("[" + this.getClass().getName() + "] Verified node has " + vidQuery.getVideoName() + ", Block " + vidQuery.getReqBlock());
+												
+												String pathname = null;
+												
+												// Process for m3u8 header file (We designate block 0 for this header!)
+												if (vidQuery.getReqBlock() == 0)
+													pathname = GlobalVar.VIDEO_TOP_DIR + vidQuery.getVideoName() + "/" + vidQuery.getVideoName() + GlobalVar.VIDEO_HEADER_SUFFIX;											
+												// Process for other regular video blocks
+												else
+													pathname = GlobalVar.VIDEO_TOP_DIR + vidQuery.getVideoName() + "/" + vidQuery.getVideoName() + GlobalVar.VIDEO_SUFFIX;
+																							
+												Path path = Paths.get(pathname);
+												byte[] data = null;
+												
+												// Read the file representing the block into a byte array
+												try {
+													data = Files.readAllBytes(path);
+												}
+												catch (IOException ioe) {
+													
+													logThread.writeLog("[" + this.getClass().getName() + "] Error reading from path name " + pathname);
+
+													// Go back to listening loop if unable to read from path name
+													continue;
+													
+												}
+												
+												catch (Exception e) {
+													
+													// Write general exception type to log
+													this.logThread.writeLog("[" + this.getClass().getName() + "] EXCEPTION (Read path):" + e.getClass().getName());											
+												
+												}// end try-catch
+												
+												// Format new video query response message with the video block to be propagated back to source
+												VideoQueryResponse vQueryRes = new VideoQueryResponse(vidQuery.getSrcIP(),
+														vidQuery.getVideoName(), vidQuery.getReqBlock(), vidQuery.getIPPath(), data);
+												
+												// Send video query response
+												this.sendVideoQueryResponse(vQueryRes);											
+												
+											} // endif
 											
 										} // endif
 										
@@ -256,7 +324,7 @@ public class PeerCommThread extends Thread{
 										else {
 											
 											// Forward video query to all neighbours
-											this.forwardToNextHopVideoQuery(vidQuery);
+											this.forwardToNeighboursVideoQuery(vidQuery);
 											
 										} // endif
 
@@ -266,6 +334,44 @@ public class PeerCommThread extends Thread{
 								}
 								
 								else if (serialisedMsg instanceof VideoQueryResponse) {
+									
+									// Cast received message to proper object type
+									VideoQueryResponse vQueryRes = (VideoQueryResponse) serialisedMsg;
+									
+									// If this is not the endpoint, continue to forward message to next hop
+									if (vQueryRes.getPeerIndex() >= 0)
+										this.sendVideoQueryResponse(vQueryRes);
+									
+									else {
+										
+										// Case 1: Response making its way back to source so a GET video query can be issued
+										// ACTION: Issue a GET video request now that the path to destination is known
+										if (vQueryRes.getBuffer() == null) {
+											
+											this.forwardToNeighboursVideoQuery(new VideoQuery(vQueryRes.getSrcIP(), 
+													vQueryRes.getVideoName(), vQueryRes.getReqBlock(), vQueryRes.getPathList()));
+											
+										}
+										
+										// Case 2: Response with video contents making its way back to requestor
+										// ACTION: Playback file at source on matching IP
+										else {
+
+											if (vQueryRes.getSrcIP().equals(p2ppeer.getMyIP())) {
+												
+												// *************** TODO: PLAYBACK THE VIDEO HERE *****************************
+											
+											}
+												
+											else {
+												
+												logThread.writeLog("[" + this.getClass().getName() + "] ERROR: Requestor IP is different!");
+											
+											}// endif
+											
+										} // endif
+										
+									} // endif
 									
 								}
 								
@@ -342,7 +448,7 @@ public class PeerCommThread extends Thread{
 					this.logThread.writeLog("[" + this.getClass().getName() + "] " + ip + " has block " + block + " of video: " + videoName);
 					
 					// Issue a GET Video Query to retrieve block from neighbour
-					wThread.sendVideoQuery(new VideoQuery(p2ppeer.getMyIP(), ip, videoName, block, new ArrayList <String>()));
+					wThread.sendVideoQuery(new VideoQuery(p2ppeer.getMyIP(), videoName, block, new ArrayList <String>()));
 				
 				}
 				

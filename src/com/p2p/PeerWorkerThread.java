@@ -120,31 +120,48 @@ public class PeerWorkerThread extends Thread {
 		return this.videoList;
 	} // end getVideoList
 	
-	// Send VideoQuery message
-	public void sendVideoQuery(VideoQuery vidQuery) {
+	public String getNodeIP() {
+		return this.nodeIP;
+	} // end getNodeIP
+	
+	// General method that takes in an object type to be sent out through TCP
+	public void sendTCPObject(Object o) {
 
+		String type = null;
+		
 		try {
+
+			if (o instanceof VideoQuery)
+				type = "Video Query";
+			else if (o instanceof VideoQueryResponse)
+				type = "Video Query Response";
+			else {
+
+				this.logThread.writeLog("[" + this.getClass().getName() + "] ERROR: Unknown TCP Object type!");
+				return;
+			
+			} // endif
 			
 			// Attempt to establish TCP connection with this next hop node
 			Socket serverSocket = new Socket(this.nodeIP, GlobalVar.P2P_TCP_PORT);
 			
 			// Write the video query response message as serialised object to socket connection
 			ObjectOutputStream oStream = new ObjectOutputStream(serverSocket.getOutputStream()); 
-			oStream.writeObject(vidQuery);
+			oStream.writeObject(o);
 			oStream.close();
 			
 			// Close connection once video query response has been sent
 			serverSocket.close();
 			
 			// Write SUCCESS status to log file
-			this.logThread.writeLog("[" + this.getClass().getName() + "] Video Query sent to: " + this.nodeIP + ":" + GlobalVar.P2P_TCP_PORT);
+			this.logThread.writeLog("[" + this.getClass().getName() + "] " + type + " sent to: " + this.nodeIP + ":" + GlobalVar.P2P_TCP_PORT);
 			
 		}
 		
 		catch (IOException ioe) {
 
 			// Write FAIL status to log file
-			this.logThread.writeLog("[" + this.getClass().getName() + "] ERROR: Could not forward Video Query to " + this.nodeIP + ":" + GlobalVar.P2P_TCP_PORT);
+			this.logThread.writeLog("[" + this.getClass().getName() + "] ERROR: Could not send " + type + " to " + this.nodeIP + ":" + GlobalVar.P2P_TCP_PORT);
 		
 		} // end try-catch
 
@@ -154,44 +171,17 @@ public class PeerWorkerThread extends Thread {
 			this.logThread.writeLog("[" + this.getClass().getName() + "] EXCEPTION:" + e.getClass().getName());
 			
 		} // end try-catch
-		
+	
+	} // end sendTCPObject
+	
+	// Send VideoQuery message
+	public void sendVideoQuery(VideoQuery vidQuery) {
+		this.sendTCPObject(vidQuery);		
 	} // end sendVideoQuery
 	
 	// Send VideoQueryResponse message
 	public void sendVideoQueryResponse(VideoQueryResponse vQueryResponse) {
-		
-		try {
-			
-			// Attempt to establish TCP connection with this next hop node
-			Socket serverSocket = new Socket(this.nodeIP, GlobalVar.P2P_TCP_PORT);
-			
-			// Write the video query response message as serialised object to socket connection
-			ObjectOutputStream oStream = new ObjectOutputStream(serverSocket.getOutputStream()); 
-			oStream.writeObject(vQueryResponse);
-			oStream.close();
-			
-			// Close connection once video query response has been sent
-			serverSocket.close();
-			
-			// Write SUCCESS status to log file
-			this.logThread.writeLog("[" + this.getClass().getName() + "] Video Query Response forwarded to: " + this.nodeIP + ":" + GlobalVar.P2P_TCP_PORT);
-			
-		}
-		
-		catch (IOException ioe) {
-
-			// Write FAIL status to log file
-			this.logThread.writeLog("[" + this.getClass().getName() + "] ERROR: Could not forward Video Query Response to " + this.nodeIP + ":" + GlobalVar.P2P_TCP_PORT);
-		
-		} // end try-catch
-
-		catch (Exception e) {
-
-			// Write general exception type to log
-			this.logThread.writeLog("[" + this.getClass().getName() + "] EXCEPTION:" + e.getClass().getName());
-			
-		} // end try-catch		
-		
+		this.sendTCPObject(vQueryResponse);
 	} // end sendVideoQueryResponse
 	
 	// Overwrite current video list for that neighbour with the new copy

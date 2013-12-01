@@ -18,7 +18,9 @@ public class VideoInfo {
 		blockStatus = new boolean[numBlock];
 		
 		// Initialise boolean arraylist for blocks
-		this.initBlockStatus(numBlock);
+		// Total number of blocks + 1 (m3u8 header).
+		// m3u8 header's state will be addressed through blockStatus[0]
+		this.initBlockStatus(numBlock + 1);
 				
 	} // end specific constructor
 	

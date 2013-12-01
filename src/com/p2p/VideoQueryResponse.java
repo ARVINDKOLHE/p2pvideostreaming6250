@@ -87,6 +87,11 @@ public class VideoQueryResponse implements Serializable {
 		return buffer;
 	} // end getBuffer
 	
+	// Return path to destination with video block
+	public ArrayList <String> getPathList() {
+		return this.ipPath;
+	} // end getPathList
+	
 	// Decrement peer index by 1
 	public void decrementPeerIndex() {
 		

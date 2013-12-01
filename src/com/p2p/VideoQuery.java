@@ -1,7 +1,7 @@
 /* ---------------------------------------------
 
 VideoQuery Class
-Last updated: Friday, 29th Nov 2013
+Last updated: Sunday, 1st Dec 2013
 
 Class defining format for Video Queries
 1. Video query to find peers able to service request
@@ -26,14 +26,16 @@ public class VideoQuery implements Serializable {
 	private String videoName;
 	private int reqBlock;
 	private String srcIP;
-	private String dstIP;
+	private boolean isGET;
+	private int currIndex;
 	private ArrayList <String> ipPath;
 	
 	// Constructor 1: To be used for seeking (i.e. no clue about who has a file)
 	public VideoQuery(String ip, String name, int block) {
 		
 		srcIP = ip;
-		dstIP = null;
+		isGET = false;
+		currIndex = -1;
 		
 		videoName = name;
 		reqBlock = block;
@@ -42,10 +44,11 @@ public class VideoQuery implements Serializable {
 	} // end specific constructor 1
 
 	// Constructor 2: To be used for an actual video request for a known source
-	public VideoQuery(String srcip, String dstip, String name, int block, ArrayList <String> path) {
+	public VideoQuery(String srcip, String name, int block, ArrayList <String> path) {
 
 		srcIP = srcip;
-		dstIP = dstip;
+		isGET = true;
+		currIndex = 0;
 
 		// Set the arraylist of nodes to be traversed in path to destination
 		// This should be taken from the initial VideoQuery where the destination is unknown
@@ -92,14 +95,17 @@ public class VideoQuery implements Serializable {
 		return this.ipPath.isEmpty();
 	} // end isPathEmpty
 	
-	// Check if this is an actual video GET query (destination known)
+	// Check if this is an actual video GET query
 	public boolean isGetQuery() {
-		
-		if (this.dstIP == null)
-			return false;
-		
-		return true;
-		
+		return this.isGET;
 	} // end isGetQuery
+	
+	public void incrementCurrIndex() {
+		currIndex += 1;
+	} // end incrementCurrIndex
+	
+	public int getCurrIndex() {
+		return currIndex;
+	} // end getCurrIndex
 
 } // end class VideoQuery

@@ -37,13 +37,15 @@ public class ServerCommThread extends Thread {
 	// Heartbeat routine to be executed at fixed timing intervals
 	private class Heartbeat extends TimerTask {
 		
+		private String srcIP;
 		private String serverIP;
 		private int serverPort;
 		private LoggerThread logThread;
 		
-		private Heartbeat(String ip, int port, LoggerThread thLog) {
+		private Heartbeat(String ip, String serverIP, int port, LoggerThread thLog) {
 			
-			this.serverIP = ip;
+			this.srcIP = ip;
+			this.serverIP = serverIP;
 			this.serverPort = port;
 			this.logThread = thLog;
 		
@@ -59,7 +61,7 @@ public class ServerCommThread extends Thread {
 				// Write the heartbeat message as serialised object to socket connection
 				// Receiver to cast it as PeerServerPing class object
 				ObjectOutputStream oStream = new ObjectOutputStream(serverSocket.getOutputStream()); 
-				oStream.writeObject(new PeerServerPing(this.serverIP));
+				oStream.writeObject(new PeerServerPing(this.srcIP));
 				oStream.close();
 				
 				// Close connection once heartbeat has been sent
@@ -167,7 +169,7 @@ public class ServerCommThread extends Thread {
 		// Execute a new timer and timer task
 		// Send heartbeat from Peer to Server at fixed durations
 		Timer timer = new Timer();
-		Heartbeat heartbeat = new Heartbeat(this.serverIPAddr, this.serverPort, logThread);
+		Heartbeat heartbeat = new Heartbeat(this.p2pPeer.getMyIP(), this.serverIPAddr, this.serverPort, logThread);
 		
 		// Sending of heartbeat starts after initial interval of one heartbeat duration
 		timer.scheduleAtFixedRate(heartbeat, this.HEARTBEAT_DURATION, this.HEARTBEAT_DURATION);

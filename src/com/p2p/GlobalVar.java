@@ -1,7 +1,7 @@
 /* ---------------------------------------------
 
 GlobalVar Class
-Last updated: Friday, 29th Nov 2013
+Last updated: Sunday, 1st Dec 2013
 
 Class containing constants used for packet configurations
 
@@ -39,6 +39,8 @@ public final class GlobalVar {
 	
 	// Top level directory for videos
 	public final static String VIDEO_TOP_DIR = "Videos/";
+	// File extension for header file
+	public final static String VIDEO_HEADER_SUFFIX = ".m3u8";
 	// File extension for videos
 	public final static String VIDEO_SUFFIX = ".ts";
 	
