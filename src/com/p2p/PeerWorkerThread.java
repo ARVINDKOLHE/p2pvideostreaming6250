@@ -33,7 +33,12 @@ public class PeerWorkerThread extends Thread {
 	private Hashtable <String, VideoInfo> videoList;
 	
 	// default constructor; used only as placeholder
-	public PeerWorkerThread() {}
+	public PeerWorkerThread() {
+		nodeIP = null;
+		logThread = null;
+		isActive = false;
+		videoList = new Hashtable <String, VideoInfo>();
+	}
 	
 	public PeerWorkerThread(String ip, LoggerThread logThread) {
 
