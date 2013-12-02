@@ -80,12 +80,12 @@ public class P2PServer {
 					for (PeerInformation peer: peerSet.values()) {
 						loggerThread.writeLog("Start sending heartbeat to" + peer.ipAddr + " , " + this.PORT);
 						Socket socket = new Socket(peer.ipAddr, this.PORT);
-//						loggerThread.writeLog("Socket set up successfully");
+						loggerThread.writeLog("Socket set up successfully");
 						ObjectOutputStream oStream = new ObjectOutputStream(socket.getOutputStream());
-//						loggerThread.writeLog("Output stream set up");
+						loggerThread.writeLog("Output stream set up");
 						oStream.writeObject(new ServerPeerPing(peer));
 						loggerThread.writeLog(peer.ipAddr+" has  " + peer.neighbour.size()+ " neighbours");
-//						loggerThread.writeLog("Sent successfully");
+						loggerThread.writeLog("Sent successfully");
 						//oStream.writeObject(peer);
 						oStream.close();
 						socket.close();
