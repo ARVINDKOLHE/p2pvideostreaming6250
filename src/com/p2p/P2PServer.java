@@ -44,16 +44,16 @@ public class P2PServer {
 				ObjectInputStream inStream = new ObjectInputStream(socket.getInputStream());
 				PeerServerPing ping = (PeerServerPing) inStream.readObject();
 				int port = 9898;
-				loggerThread.writeLog("["+Thread.currentThread().getName()+"]"+"New socket connection from "+ip+",\t"+port);
+				loggerThread.writeLog("New socket connection from "+ip+",\t"+port);
 				synchronized(peerSet) {
 					if (!peerSet.containsKey(ip)) {
-						loggerThread.writeLog("["+Thread.currentThread().getName()+"]"+"New Peer connected");
+						loggerThread.writeLog("New Peer connected");
 						PeerInformation peerInformation = new PeerInformation (ip,port);
 						generateNeighbour(peerInformation);
 						peerSet.put(ip, peerInformation);
 					}
 					else {
-						loggerThread.writeLog("["+Thread.currentThread().getName()+"]"+"Regular Peer HeartBeat");
+						loggerThread.writeLog("Regular Peer HeartBeat");
 					}
 				}
 			} catch (IOException e) {
@@ -75,22 +75,25 @@ public class P2PServer {
 			Thread.currentThread().setName("ServerHeartBeat");
 			try{
 				synchronized (peerSet) {
-					loggerThread.writeLog("["+Thread.currentThread().getName()+"]"+"Start sending heartbeat for " + peerSet.size());
+					loggerThread.writeLog("Start sending heartbeat for " + peerSet.size());
 	//Enumerate every peer information. 
 					for (PeerInformation peer: peerSet.values()) {
-						loggerThread.writeLog("["+Thread.currentThread().getName()+"]"+"Start sending heartbeat to" + peer.ipAddr + " , " + this.PORT);
-
+						loggerThread.writeLog("Start sending heartbeat to" + peer.ipAddr + " , " + this.PORT);
 						Socket socket = new Socket(peer.ipAddr, this.PORT);
+//						loggerThread.writeLog("Socket set up successfully");
 						ObjectOutputStream oStream = new ObjectOutputStream(socket.getOutputStream());
+//						loggerThread.writeLog("Output stream set up");
 						oStream.writeObject(new ServerPeerPing(peer));
+						loggerThread.writeLog(peer.ipAddr+" has  " + peer.neighbour.size()+ " neighbours");
+//						loggerThread.writeLog("Sent successfully");
 						//oStream.writeObject(peer);
 						oStream.close();
 						socket.close();
 					}
-					loggerThread.writeLog("["+Thread.currentThread().getName()+"]"+"Heartbeat Sent");
+					loggerThread.writeLog("Heartbeat Sent");
 				}
 			} catch (IOException ioe){
-				loggerThread.writeLog("["+Thread.currentThread().getName()+"]"+ "{Error}" + ioe.getLocalizedMessage());
+				loggerThread.writeLog("{Error}" + ioe.getLocalizedMessage());
 			}
 		}
 	}
@@ -104,12 +107,12 @@ public class P2PServer {
 		ServerSocket listener = new ServerSocket();
 		listener.setReuseAddress(true);
 		listener.bind(new InetSocketAddress(InetAddress.getLocalHost().getHostAddress(),PORT));
-		p2pServer.loggerThread.writeLog("["+Thread.currentThread().getName()+"]"+"Successfully listening on port "+PORT);
+		p2pServer.loggerThread.writeLog("Successfully listening on port "+PORT);
 
 		Timer timer = new Timer();
 		Heartbeat heartbeat = p2pServer.new Heartbeat();
 		timer.scheduleAtFixedRate(heartbeat, p2pServer.HEARTBEAT_DURATION, p2pServer.HEARTBEAT_DURATION);
-		p2pServer.loggerThread.writeLog("["+Thread.currentThread().getName()+"]"+"Timer of Heartbeat set up sucessfully");
+		p2pServer.loggerThread.writeLog("Timer of Heartbeat set up sucessfully");
 
 		try {
 			while (true) {
