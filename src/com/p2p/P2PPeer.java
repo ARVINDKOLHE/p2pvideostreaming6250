@@ -34,7 +34,7 @@ public class P2PPeer {
 		// TESTING!!!!!!!!!!!
 		java.util.Random r = new java.util.Random();
 		
-		for (int i = 0; i < r.nextInt(5); i++) {
+		for (int i = 0; i < 1 + r.nextInt(5); i++) {
 			
 			String rand = "FV " + r.nextInt(256);
 			myVideos.put(rand, new VideoInfo(r.nextInt(125)));
