@@ -35,7 +35,7 @@ public class P2PPeer {
 		java.util.Random r = new java.util.Random();
 		
 		for (int i = 0; i < r.nextInt(5); i++)
-			myVideos.put("FV " + r.nextInt(), new VideoInfo(r.nextInt()));
+			myVideos.put("FV " + r.nextInt(10), new VideoInfo(r.nextInt(125)));
 		
 		isActive = true;
 		
