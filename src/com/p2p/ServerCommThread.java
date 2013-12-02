@@ -224,9 +224,7 @@ public class ServerCommThread extends Thread {
 				
 			} // end try-catch
 
-		} // endwhile
-			
-		// Cancel timer when complete
+		} // endwhile5
 		timer.cancel();
 
 	} // end run

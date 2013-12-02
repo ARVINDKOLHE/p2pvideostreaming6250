@@ -9,7 +9,9 @@ indicating completeness status of each block
 
 package com.p2p;
 
-public class VideoInfo {
+import java.io.Serializable;
+
+public class VideoInfo implements Serializable {
 
 	private boolean blockStatus[];
 	

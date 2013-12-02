@@ -31,6 +31,12 @@ public class P2PPeer {
 		neighbourWorkers = new Hashtable <String, PeerWorkerThread>();
 		myVideos = new Hashtable <String, VideoInfo>();
 		
+		// TESTING!!!!!!!!!!!
+		java.util.Random r = new java.util.Random();
+		
+		for (int i = 0; i < r.nextInt(5); i++)
+			myVideos.put("FV " + r.nextInt(), new VideoInfo(r.nextInt()));
+		
 		isActive = true;
 		
 	} // end default constructor
@@ -259,7 +265,7 @@ public class P2PPeer {
 
 		P2PPeer p2ppeer = new P2PPeer();		
 		int serverPort = 0;
-		
+				
 		// Get the peer's IP address
 		try {
 			p2ppeer.hostname = InetAddress.getLocalHost().getHostAddress();
@@ -268,7 +274,9 @@ public class P2PPeer {
 
 		p2ppeer.logThread = new LoggerThread();		
 		p2ppeer.logThread.start();
-		
+
+		PeerWorkerThread wThread = new PeerWorkerThread("127.0.0.1", p2ppeer.logThread);
+				
 		while (p2ppeer.isActive) {
 
 			p2ppeer.displayAppHeader();
