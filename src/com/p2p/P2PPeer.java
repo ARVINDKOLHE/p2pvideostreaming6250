@@ -34,8 +34,14 @@ public class P2PPeer {
 		// TESTING!!!!!!!!!!!
 		java.util.Random r = new java.util.Random();
 		
-		for (int i = 0; i < r.nextInt(5); i++)
-			myVideos.put("FV " + r.nextInt(10), new VideoInfo(r.nextInt(125)));
+		for (int i = 0; i < r.nextInt(5); i++) {
+			
+			String rand = "FV " + r.nextInt();
+			myVideos.put(rand, new VideoInfo(r.nextInt(125)));
+		
+		}
+		
+		System.out.println(myVideos.size());
 		
 		isActive = true;
 		
@@ -265,7 +271,10 @@ public class P2PPeer {
 
 		P2PPeer p2ppeer = new P2PPeer();		
 		int serverPort = 0;
-				
+		
+		System.out.println("INIT PRINT VIDEOS");
+		p2ppeer.listVideos();
+		
 		// Get the peer's IP address
 		try {
 			p2ppeer.hostname = InetAddress.getLocalHost().getHostAddress();
