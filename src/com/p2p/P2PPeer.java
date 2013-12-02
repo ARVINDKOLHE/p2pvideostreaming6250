@@ -36,7 +36,7 @@ public class P2PPeer {
 		
 		for (int i = 0; i < r.nextInt(5); i++) {
 			
-			String rand = "FV " + r.nextInt();
+			String rand = "FV " + r.nextInt(256);
 			myVideos.put(rand, new VideoInfo(r.nextInt(125)));
 		
 		}

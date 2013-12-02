@@ -17,20 +17,20 @@ public class VideoInfo implements Serializable {
 	
 	public VideoInfo(int numBlock) {
 		
-		blockStatus = new boolean[numBlock];
+		blockStatus = new boolean[numBlock + 1];
 		
 		// Initialise boolean arraylist for blocks
 		// Total number of blocks + 1 (m3u8 header).
 		// m3u8 header's state will be addressed through blockStatus[0]
-		this.initBlockStatus(numBlock + 1);
+		this.initBlockStatus();
 				
 	} // end specific constructor
 	
-	private void initBlockStatus(int numBlock) {
+	private void initBlockStatus() {
 	
 		// Add N elements representing completeness of each block
 		// to list. Set boolean flag for each block to false
-		for (int i=0; i < numBlock; i++) {
+		for (int i=0; i < this.blockStatus.length; i++) {
 			this.blockStatus[i] = false;
 		} // endfor
 		
