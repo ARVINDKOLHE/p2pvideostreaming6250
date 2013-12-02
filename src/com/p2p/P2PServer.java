@@ -83,7 +83,9 @@ public class P2PServer {
 						loggerThread.writeLog("Socket set up successfully");
 						ObjectOutputStream oStream = new ObjectOutputStream(socket.getOutputStream());
 						loggerThread.writeLog("Output stream set up");
-						oStream.writeObject(new ServerPeerPing(peer));
+						ServerPeerPing ping = new ServerPeerPing(peer);
+						loggerThread.writeLog("Ping generated");
+						oStream.writeObject(ping);
 						loggerThread.writeLog(peer.ipAddr+" has  " + peer.neighbour.size()+ " neighbours");
 						loggerThread.writeLog("Sent successfully");
 						//oStream.writeObject(peer);
