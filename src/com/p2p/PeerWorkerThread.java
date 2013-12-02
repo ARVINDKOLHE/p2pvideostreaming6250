@@ -24,7 +24,9 @@ import java.util.Hashtable;
 import java.util.Timer;
 import java.util.TimerTask;
 
-public class PeerWorkerThread extends Thread {
+import java.io.Serializable;
+
+public class PeerWorkerThread extends Thread implements Serializable {
 
 	private String nodeIP;
 	private LoggerThread logThread;
