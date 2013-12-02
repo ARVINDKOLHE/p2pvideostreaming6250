@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.ArrayList;
+import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.Random;
@@ -80,14 +81,8 @@ public class P2PServer {
 					for (PeerInformation peer: peerSet.values()) {
 						loggerThread.writeLog("Start sending heartbeat to" + peer.ipAddr + " , " + this.PORT);
 						Socket socket = new Socket(peer.ipAddr, this.PORT);
-						loggerThread.writeLog("Socket set up successfully");
 						ObjectOutputStream oStream = new ObjectOutputStream(socket.getOutputStream());
-						loggerThread.writeLog("Output stream set up");
-						ServerPeerPing ping = new ServerPeerPing(peer);
-						loggerThread.writeLog("Ping generated");
-						oStream.writeObject(ping);
-						loggerThread.writeLog(peer.ipAddr+" has  " + peer.neighbour.size()+ " neighbours");
-						loggerThread.writeLog("Sent successfully");
+						oStream.writeObject(new ServerPeerPing(peer));
 						//oStream.writeObject(peer);
 						oStream.close();
 						socket.close();
